@@ -1,0 +1,148 @@
+---
+title: "Practical Machine Learning - Course Project"
+author: "aduran9"
+date: "26/May/2021"
+output: 
+  html_document:
+    keep_md: true
+---
+
+## Introduction
+
+This is my *"PML-Project | Predict activity quality from activity monitors"* for the John Hopkins Data Science Specialization from Coursera. This document outlines the machine learning analysis performed on a data set of exercise routines collected by a wearable device.
+
+The goal of the analysis is to select and build an optimal prediction model to predict 20 test cases in the course.
+
+## Overview of Training and Test Data
+
+In this project, we will use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants to predict the manner in which they did the exercise. This is the “classe” variable in the training set.
+
+The traing data is available here: 
+[Training Data](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv).
+
+The test data is available here: 
+[Test Data](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv).
+
+The outcome variable is `classe`, a factor variable with 5 levels. For this data set, participants were asked to perform one set of 10 repetitions of the Unilateral Dumbbell Biceps Curl in 5 different fashions:
+
+- Exactly according to the specification (Class A)
+- Throwing the elbows to the front (Class B)
+- Lifting the dumbbell only halfway (Class C)
+- Lowering the dumbbell only halfway (Class D)
+- Throwing the hips to the front (Class E)
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Loading and preprocessing the data
+
+Training and Testing Data is read from online source, load the dataset placed into the working directory.
+
+```{r, message=FALSE, warning=FALSE}
+# Download and read raw data
+trainUrl <-"https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+testUrl <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+trainFile <- "./data/pml-training.csv"
+testFile  <- "./data/pml-testing.csv"
+if (!file.exists("./data")) {
+  dir.create("./data")
+}
+if (!file.exists(trainFile)) {
+  download.file(trainUrl, destfile=trainFile, method="curl")
+}
+if (!file.exists(testFile)) {
+  download.file(testUrl, destfile=testFile, method="curl")
+}
+# Import Dataset
+trainRaw <- read.csv("./data/pml-training.csv", header=TRUE)
+testRaw <- read.csv("./data/pml-testing.csv", header=TRUE)
+```
+```{r}
+## How much information do we have???
+dim(trainRaw)
+dim(testRaw)
+```
+The training data set contains 19622 observations and 160 variables, while the testing data set contains 20 observations and 160 variables. The “classe” variable in the training set is the outcome to predict.
+```{r}
+## Load libraries
+library("lattice")
+library("ggplot2")
+library("caret")
+library("rpart")
+library("rpart.plot")
+library("randomForest")
+
+## Set properly if different from USA
+Sys.setlocale("LC_TIME", "English")
+# Set seed for reproducability
+# set.seed(9999)
+```
+
+## Data preparation.
+
+Remove those data that contains more than 95% of the observation to be NA. The step it's to filter out those records.
+```{r}
+training_data <- read.csv("./data/pml-training.csv", na.strings=c("NA", "#DIV/0!", ""))
+test_data <- read.csv("./data/pml-testing.csv", na.strings=c("NA", "#DIV/0!", ""))
+clnColumnIndex <- (colSums(is.na(training_data))/nrow(training_data)) < 0.95
+clean_training_data <- training_data[, clnColumnIndex]
+```
+Verifying the "remove NA" step was correct
+```{r}
+colSums(is.na(clean_training_data))/nrow(clean_training_data)
+colSums(is.na(clean_training_data))
+```
+Taking out the columns 1 to 7 because they are not related to the prediction model
+```{r}
+clean_training_data <- clean_training_data[, -c(1:7)]
+clean_test_data <- test_data[, -c(1:7)]
+```
+Make partition of the "training data" into "training set" and "cross validation set"
+```{r}
+inTrainIndex <- createDataPartition(clean_training_data$classe, p=0.75)[[1]]
+ttraining_data <- clean_training_data[inTrainIndex, ]
+tcrossval_data <- clean_training_data[-inTrainIndex, ]
+```
+Change the "test dataset" into the same
+```{r}
+allNames <- names(clean_training_data)
+clean_test_data <- test_data[, allNames[1:52]]
+```
+
+## Machine Learning Algorithm - Decision Tree.
+
+Predict with decision tree and output the confusion matrix.
+```{r}
+decisionTreeMod <- train(classe ~., method="rpart", data=ttraining_data)
+decisionTreePrediction <- predict(decisionTreeMod, tcrossval_data)
+confusionMatrix(table(tcrossval_data$classe, decisionTreePrediction))
+```
+Plotting the decision tree
+```{r}
+rpart.plot(decisionTreeMod$finalModel)
+```
+It seems like the result of the model is not ideal.
+
+## Machine Learning Algorithm - Random Forest.
+
+Predict with Random Forest and output the Confusion Matrix and Statistics.
+```{r}
+rfMod <- train(classe ~., method="rf", data=ttraining_data, ntree=128)
+rfPrediction <- predict(rfMod, tcrossval_data)
+confusionMatrix(table(tcrossval_data$classe, rfPrediction))
+```
+
+## Prediction base on Machine Learning Algorithms.
+
+Predict using the test set.
+```{r}
+predict(rfMod, clean_test_data)
+```
+
+The "Random Forest algorithm" can by far perform an outcomes more accurate than the "Decision Tree Algorithm". The results from RF are in the 99.25% of accuracy while the DT give almost the 50% in sample accuracy.
+```{r}
+```
+## 
+## 
