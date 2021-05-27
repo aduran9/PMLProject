@@ -1,6 +1,8 @@
 # PMLProject
 PML-Project | Predict activity quality from activity monitors
 
+Click here to see the results: https://aduran9.github.io/PMLProject/PML_Project.html
+
 Prediction Assignment Writeup
 
 One thing that people regularly do is quantify how  much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants.
